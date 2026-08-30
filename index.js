@@ -26,7 +26,6 @@ const commands = [
   new SlashCommandBuilder()
     .setName("send")
     .setDescription("Send an embed message to a channel")
-
     .addChannelOption(option =>
       option
         .setName("channel")
@@ -34,107 +33,86 @@ const commands = [
         .addChannelTypes(ChannelType.GuildText)
         .setRequired(true)
     )
-
     .addStringOption(option =>
       option
         .setName("title")
         .setDescription("Title of the embed")
         .setRequired(true)
     )
-
     .addStringOption(option =>
       option
         .setName("message")
         .setDescription("Main message")
         .setRequired(true)
     )
-
     .addStringOption(option =>
       option
         .setName("image")
         .setDescription("Optional image URL")
         .setRequired(false)
     )
-
-    .setDefaultMemberPermissions(
-      PermissionFlagsBits.Administrator
-    )
-
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .toJSON(),
 ];
 
 client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
-  const rest = new REST({
-    version: "10",
-  }).setToken(token);
+  const rest = new REST({ version: "10" }).setToken(token);
 
   try {
     await rest.put(
       Routes.applicationCommands(client.user.id),
-      {
-        body: commands,
-      }
+      { body: commands }
     );
 
     console.log("✅ /send embed command registered");
   } catch (error) {
-    console.error("❌ Command registration failed:");
     console.error(error);
   }
 });
 
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName !== "send") return;
 
-  if (interaction.commandName === "send") {
-    const channel =
-      interaction.options.getChannel("channel");
+  const channel = interaction.options.getChannel("channel");
+  const title = interaction.options.getString("title");
+  const message = interaction.options.getString("message");
+  const image = interaction.options.getString("image");
 
-    const title =
-      interaction.options.getString("title");
+  try {
+    const embed = new EmbedBuilder()
+      .setTitle(title)
+      .setDescription(message)
+      .setColor(0x2b2d31)
+      .setFooter({
+        text: "Wealth By Lords • New Server. New Us.",
+      })
+      .setTimestamp();
 
-    const message =
-      interaction.options.getString("message");
-
-    const image =
-      interaction.options.getString("image");
-
-    try {
-      const embed = new EmbedBuilder()
-        .setTitle(title)
-        .setDescription(message)
-        .setColor(0x2b2d31)
-        .setFooter({
-          text: "Wealth By Lords • New Server. New Us.",
-        })
-        .setTimestamp();
-
-      if (image) {
-        embed.setImage(image);
-      }
-
-      await channel.send({
-        embeds: [embed],
-      });
-
-      await interaction.reply({
-        content: `✅ Embed sent to ${channel}`,
-        ephemeral: true,
-      });
-
-    } catch (error) {
-      console.error("❌ Failed to send embed:");
-      console.error(error);
-
-      await interaction.reply({
-        content:
-          "❌ I couldn't send the embed. Check the bot permissions and image URL.",
-        ephemeral: true,
-      });
+    if (image) {
+      embed.setImage(image);
     }
+
+    await channel.send({
+      embeds: [embed],
+    });
+
+    await interaction.reply({
+      content: `✅ Embed sent to ${channel}`,
+      ephemeral: true,
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    await interaction.reply({
+      content: "❌ I couldn't send the embed.",
+      ephemeral: true,
+    });
   }
 });
 
 client.login(token);
+

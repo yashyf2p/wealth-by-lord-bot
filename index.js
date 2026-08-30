@@ -8,12 +8,13 @@ const {
   Routes,
   PermissionFlagsBits,
   ChannelType,
+  EmbedBuilder,
 } = require("discord.js");
 
 const token = process.env.DISCORD_TOKEN;
 
 if (!token) {
-  console.error("❌ Missing DISCORD_TOKEN in .env");
+  console.error("❌ Missing DISCORD_TOKEN");
   process.exit(1);
 }
 
@@ -24,70 +25,114 @@ const client = new Client({
 const commands = [
   new SlashCommandBuilder()
     .setName("send")
-    .setDescription("Send a message to a Discord channel")
+    .setDescription("Send an embed message to a channel")
+
     .addChannelOption(option =>
       option
         .setName("channel")
-        .setDescription("Choose the text channel")
+        .setDescription("Choose the channel")
         .addChannelTypes(ChannelType.GuildText)
         .setRequired(true)
     )
+
+    .addStringOption(option =>
+      option
+        .setName("title")
+        .setDescription("Title of the embed")
+        .setRequired(true)
+    )
+
     .addStringOption(option =>
       option
         .setName("message")
-        .setDescription("Message to send")
+        .setDescription("Main message")
         .setRequired(true)
-        .setMaxLength(2000)
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+
+    .addStringOption(option =>
+      option
+        .setName("image")
+        .setDescription("Optional image URL")
+        .setRequired(false)
+    )
+
+    .setDefaultMemberPermissions(
+      PermissionFlagsBits.Administrator
+    )
+
     .toJSON(),
 ];
 
 client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
-  const rest = new REST({ version: "10" }).setToken(token);
+  const rest = new REST({
+    version: "10",
+  }).setToken(token);
 
   try {
     await rest.put(
       Routes.applicationCommands(client.user.id),
-      { body: commands }
+      {
+        body: commands,
+      }
     );
-    console.log("✅ /send command registered");
+
+    console.log("✅ /send embed command registered");
   } catch (error) {
-    console.error("❌ Failed to register slash command:", error);
+    console.error("❌ Command registration failed:");
+    console.error(error);
   }
 });
 
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
-  if (interaction.commandName !== "send") return;
 
-  const channel = interaction.options.getChannel("channel");
-  const message = interaction.options.getString("message");
+  if (interaction.commandName === "send") {
+    const channel =
+      interaction.options.getChannel("channel");
 
-  try {
-    await channel.send({
-      content: message,
-      allowedMentions: { parse: [] }
-    });
+    const title =
+      interaction.options.getString("title");
 
-    await interaction.reply({
-      content: `✅ Message sent to ${channel}`,
-      ephemeral: true,
-    });
-  } catch (error) {
-    console.error("❌ Failed to send message:", error);
+    const message =
+      interaction.options.getString("message");
 
-    const reply = {
-      content: "❌ I couldn't send the message. Check the bot's channel permissions.",
-      ephemeral: true,
-    };
+    const image =
+      interaction.options.getString("image");
 
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(reply);
-    } else {
-      await interaction.reply(reply);
+    try {
+      const embed = new EmbedBuilder()
+        .setTitle(title)
+        .setDescription(message)
+        .setColor(0x2b2d31)
+        .setFooter({
+          text: "Wealth By Lords • New Server. New Us.",
+        })
+        .setTimestamp();
+
+      if (image) {
+        embed.setImage(image);
+      }
+
+      await channel.send({
+        embeds: [embed],
+      });
+
+      await interaction.reply({
+        content: `✅ Embed sent to ${channel}`,
+        ephemeral: true,
+      });
+
+    } catch (error) {
+      console.error("❌ Failed to send embed:");
+      console.error(error);
+
+      await interaction.reply({
+        content:
+          "❌ I couldn't send the embed. Check the bot permissions and image URL.",
+        ephemeral: true,
+      });
     }
   }
 });

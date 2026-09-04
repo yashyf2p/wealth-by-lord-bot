@@ -1,14 +1,15 @@
 {
   "name": "wealth-by-lords-bot",
-  "version": "1.0.0",
-  "description": "Discord bot for Wealth By Lords",
+  "version": "3.0.0",
+  "description": "Wealth By Lords Discord Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "discord.js": "^14.22.1",
-    "dotenv": "^16.6.1"
+    "dotenv": "^16.6.1",
+    "pg": "^8.16.3"
   },
   "engines": {
     "node": ">=18"

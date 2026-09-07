@@ -14,6 +14,9 @@ const {
   ButtonStyle,
   Events,
   MessageFlags,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
 } = require("discord.js");
 
 const { Pool } = require("pg");
@@ -31,9 +34,9 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-// ===============================
+// ======================================================
 // DATABASE
-// ===============================
+// ======================================================
 
 const pool = new Pool({
   connectionString: databaseUrl,
@@ -42,9 +45,9 @@ const pool = new Pool({
     : { rejectUnauthorized: false },
 });
 
-// ===============================
+// ======================================================
 // DISCORD CLIENT
-// ===============================
+// ======================================================
 
 const client = new Client({
   intents: [
@@ -54,9 +57,9 @@ const client = new Client({
   ],
 });
 
-// ===============================
-// WBL SHOP
-// ===============================
+// ======================================================
+// SHOP
+// ======================================================
 
 const SHOP_ITEMS = [
   {
@@ -69,44 +72,48 @@ const SHOP_ITEMS = [
     id: "paypal10",
     name: "€10 PayPal",
     price: 23500,
-    description: "€10 sent via PayPal.",
+    description: "€10 sent through PayPal.",
   },
   {
     id: "brawlpass",
     name: "Brawl Pass",
     price: 19780,
-    description: "1x Brawl Pass reward.",
+    description: "1x Brawl Pass.",
   },
   {
     id: "everyone_ping",
     name: "@everyone Ping",
     price: 9500,
-    description: "1x @everyone ping in a server of your choice.",
+    description:
+      "1x @everyone ping in a server of your choice.",
   },
   {
     id: "double30",
     name: "2x Chat Tokens — 30 Days",
     price: 9000,
-    description: "Earn 2 tokens per active chat minute for 30 days.",
+    description:
+      "Earn 2 WBL Tokens per active chat minute for 30 days.",
   },
   {
     id: "giveaway3",
     name: "3 Extra Giveaway Entries",
     price: 7000,
-    description: "3 extra entries in an eligible giveaway.",
+    description:
+      "Receive 3 additional giveaway entries.",
   },
   {
     id: "vip_fl",
     name: "VIP Role + WBL Roster FL",
     price: 5000,
     description:
-      "VIP role + friend-list add from any player on the WBL roster.",
+      "VIP role + friend-list add from any WBL roster player.",
   },
   {
     id: "tierc_fl",
     name: "1x Tier C FL",
     price: 3000,
-    description: "1x Tier C friend-list add — organization's choice.",
+    description:
+      "1x Tier C friend-list add — organization's choice.",
   },
   {
     id: "goat",
@@ -118,50 +125,32 @@ const SHOP_ITEMS = [
     id: "giveaway1",
     name: "1 Extra Giveaway Entry",
     price: 750,
-    description: "1 extra entry in an eligible giveaway.",
+    description:
+      "Receive 1 additional giveaway entry.",
   },
 ];
 
-// ===============================
-// SLASH COMMANDS
-// ===============================
+// ======================================================
+// COMMANDS
+// ======================================================
 
 const commands = [
-
-  // ADMIN ONLY
+  // /send ADMIN
   new SlashCommandBuilder()
     .setName("send")
-    .setDescription("Send a WBL embed message")
+    .setDescription("Send a professional WBL embed")
     .addChannelOption(option =>
       option
         .setName("channel")
-        .setDescription("Channel to send the message to")
+        .setDescription("Choose where the message should be sent")
         .addChannelTypes(ChannelType.GuildText)
         .setRequired(true)
-    )
-    .addStringOption(option =>
-      option
-        .setName("title")
-        .setDescription("Embed title")
-        .setRequired(true)
-    )
-    .addStringOption(option =>
-      option
-        .setName("message")
-        .setDescription("Main message")
-        .setRequired(true)
-    )
-    .addStringOption(option =>
-      option
-        .setName("image")
-        .setDescription("Optional image URL")
-        .setRequired(false)
     )
     .setDefaultMemberPermissions(
       PermissionFlagsBits.Administrator
     ),
 
-  // ADMIN ONLY
+  // /give ADMIN
   new SlashCommandBuilder()
     .setName("give")
     .setDescription("Admin: give WBL Tokens to a member")
@@ -174,7 +163,7 @@ const commands = [
     .addIntegerOption(option =>
       option
         .setName("amount")
-        .setDescription("Number of tokens")
+        .setDescription("Number of WBL Tokens")
         .setMinValue(1)
         .setRequired(true)
     )
@@ -182,14 +171,14 @@ const commands = [
       PermissionFlagsBits.Administrator
     ),
 
-  // ADMIN ONLY
+  // /drop ADMIN
   new SlashCommandBuilder()
     .setName("drop")
-    .setDescription("Admin: make a first-person WBL Token drop")
+    .setDescription("Admin: create a first-person token drop")
     .addIntegerOption(option =>
       option
         .setName("amount")
-        .setDescription("Tokens the winner receives")
+        .setDescription("Tokens the first person receives")
         .setMinValue(1)
         .setRequired(true)
     )
@@ -204,14 +193,14 @@ const commands = [
       PermissionFlagsBits.Administrator
     ),
 
-  // ADMIN ONLY
+  // /double ADMIN
   new SlashCommandBuilder()
     .setName("double")
     .setDescription("Admin: activate server-wide 2x chat tokens")
     .addIntegerOption(option =>
       option
         .setName("minutes")
-        .setDescription("How many minutes 2x lasts")
+        .setDescription("How many minutes should 2x last?")
         .setMinValue(1)
         .setMaxValue(1440)
         .setRequired(true)
@@ -220,7 +209,7 @@ const commands = [
       PermissionFlagsBits.Administrator
     ),
 
-  // EVERYONE
+  // /wallet
   new SlashCommandBuilder()
     .setName("wallet")
     .setDescription("Check a WBL Token balance")
@@ -231,29 +220,38 @@ const commands = [
         .setRequired(false)
     ),
 
+  // /collect
   new SlashCommandBuilder()
     .setName("collect")
     .setDescription(
-      "Claim your 24-hour WBL reward after sending 5 messages"
+      "Collect 0–150 WBL Tokens after sending 5 messages"
     ),
 
+  // /daily
   new SlashCommandBuilder()
     .setName("daily")
-    .setDescription("View or claim your daily message challenge"),
+    .setDescription("View or claim your daily challenge"),
 
+  // /leaderboard
   new SlashCommandBuilder()
     .setName("leaderboard")
-    .setDescription("View the WBL Token leaderboard"),
+    .setDescription("View the richest WBL members"),
 
+  // /shop
   new SlashCommandBuilder()
     .setName("shop")
-    .setDescription("View the WBL Token Shop and buy rewards"),
-
+    .setDescription("Open the WBL Token Shop"),
 ].map(command => command.toJSON());
 
-// ===============================
+// ======================================================
 // HELPERS
-// ===============================
+// ======================================================
+
+function randomInt(min, max) {
+  return Math.floor(
+    Math.random() * (max - min + 1)
+  ) + min;
+}
 
 function luxembourgDay() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -263,24 +261,23 @@ function luxembourgDay() {
     day: "2-digit",
   }).formatToParts(new Date());
 
-  const get = type =>
+  const value = type =>
     parts.find(part => part.type === type)?.value;
 
-  return `${get("year")}-${get("month")}-${get("day")}`;
+  return `${value("year")}-${value("month")}-${value("day")}`;
 }
 
-function randomInt(min, max) {
-  return Math.floor(
-    Math.random() * (max - min + 1)
-  ) + min;
+function isAdmin(interaction) {
+  return interaction.memberPermissions?.has(
+    PermissionFlagsBits.Administrator
+  );
 }
 
-// ===============================
+// ======================================================
 // DATABASE SETUP
-// ===============================
+// ======================================================
 
 async function setupDatabase() {
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       guild_id TEXT NOT NULL,
@@ -341,36 +338,20 @@ async function setupDatabase() {
   console.log("✅ Database ready");
 }
 
-async function ensureUser(
-  guildId,
-  userId,
-  db = pool
-) {
-
+async function ensureUser(guildId, userId, db = pool) {
   await db.query(
     `
-    INSERT INTO users (
-      guild_id,
-      user_id
-    )
+    INSERT INTO users (guild_id, user_id)
     VALUES ($1, $2)
 
-    ON CONFLICT (
-      guild_id,
-      user_id
-    )
+    ON CONFLICT (guild_id, user_id)
     DO NOTHING
     `,
     [guildId, userId]
   );
 }
 
-async function ensureDaily(
-  guildId,
-  userId,
-  db = pool
-) {
-
+async function ensureDaily(guildId, userId, db = pool) {
   const day = luxembourgDay();
 
   await db.query(
@@ -382,19 +363,9 @@ async function ensureDaily(
       target,
       reward
     )
-    VALUES (
-      $1,
-      $2,
-      $3,
-      $4,
-      $5
-    )
+    VALUES ($1, $2, $3, $4, $5)
 
-    ON CONFLICT (
-      guild_id,
-      user_id,
-      day
-    )
+    ON CONFLICT (guild_id, user_id, day)
     DO NOTHING
     `,
     [
@@ -420,8 +391,7 @@ async function ensureDaily(
   return result.rows[0];
 }
 
-async function isServerDoubleActive(guildId) {
-
+async function serverDoubleActive(guildId) {
   const result = await pool.query(
     `
     SELECT double_until
@@ -431,48 +401,36 @@ async function isServerDoubleActive(guildId) {
     [guildId]
   );
 
+  if (!result.rows.length) return false;
+
   return (
-    result.rows.length > 0 &&
     Number(result.rows[0].double_until) >
-      Date.now()
+    Date.now()
   );
 }
 
-// ===============================
+// ======================================================
 // SHOP BUTTONS
-// ===============================
+// ======================================================
 
 function buildShopRows() {
-
   const rows = [];
 
-  for (
-    let i = 0;
-    i < SHOP_ITEMS.length;
-    i += 5
-  ) {
+  for (let i = 0; i < SHOP_ITEMS.length; i += 5) {
+    const row = new ActionRowBuilder();
 
-    const row =
-      new ActionRowBuilder();
+    SHOP_ITEMS
+      .slice(i, i + 5)
+      .forEach((item, localIndex) => {
+        const itemNumber = i + localIndex + 1;
 
-    for (
-      const item of
-      SHOP_ITEMS.slice(i, i + 5)
-    ) {
-
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId(
-            `shop_buy:${item.id}`
-          )
-          .setLabel(
-            `Buy ${item.price.toLocaleString()}`
-          )
-          .setStyle(
-            ButtonStyle.Primary
-          )
-      );
-    }
+        row.addComponents(
+          new ButtonBuilder()
+            .setCustomId(`shop_buy:${item.id}`)
+            .setLabel(`Buy #${itemNumber}`)
+            .setStyle(ButtonStyle.Primary)
+        );
+      });
 
     rows.push(row);
   }
@@ -480,26 +438,23 @@ function buildShopRows() {
   return rows;
 }
 
-// ===============================
-// BOT START
-// ===============================
+// ======================================================
+// START BOT
+// ======================================================
 
 client.once(
   Events.ClientReady,
   async readyClient => {
-
     console.log(
       `✅ Logged in as ${readyClient.user.tag}`
     );
 
     try {
-
       await setupDatabase();
 
-      const rest =
-        new REST({
-          version: "10",
-        }).setToken(token);
+      const rest = new REST({
+        version: "10",
+      }).setToken(token);
 
       await rest.put(
         Routes.applicationCommands(
@@ -513,9 +468,7 @@ client.once(
       console.log(
         "✅ WBL slash commands registered"
       );
-
     } catch (error) {
-
       console.error(
         "❌ Startup error:",
         error
@@ -524,52 +477,38 @@ client.once(
   }
 );
 
-// ===============================
-// CHAT TOKEN EARNING
-// ===============================
+// ======================================================
+// CHAT EARNING
+// ======================================================
 
 client.on(
   Events.MessageCreate,
   async message => {
-
     if (!message.guild) return;
     if (message.author.bot) return;
 
-    const content =
-      message.content.trim();
+    const content = message.content.trim();
 
-    // super tiny messages don't count
+    // Messages shorter than 2 characters do not count
     if (content.length < 2) return;
 
-    const guildId =
-      message.guild.id;
-
-    const userId =
-      message.author.id;
-
-    const now =
-      Date.now();
+    const guildId = message.guild.id;
+    const userId = message.author.id;
+    const now = Date.now();
 
     try {
-
-      await ensureUser(
-        guildId,
-        userId
-      );
+      await ensureUser(guildId, userId);
 
       await ensureDaily(
         guildId,
         userId
       );
 
-      // Every valid message counts
-      // for daily challenge
+      // Every valid message counts toward daily challenge
       await pool.query(
         `
         UPDATE daily_stats
-
-        SET messages =
-          messages + 1
+        SET messages = messages + 1
 
         WHERE guild_id = $1
           AND user_id = $2
@@ -582,113 +521,185 @@ client.on(
         ]
       );
 
-      const userResult =
-        await pool.query(
-          `
-          SELECT
-            last_chat_reward,
-            personal_double_until
+      const result = await pool.query(
+        `
+        SELECT
+          last_chat_reward,
+          personal_double_until
 
-          FROM users
+        FROM users
 
-          WHERE guild_id = $1
-            AND user_id = $2
-          `,
-          [
-            guildId,
-            userId,
-          ]
-        );
+        WHERE guild_id = $1
+          AND user_id = $2
+        `,
+        [guildId, userId]
+      );
 
-      const user =
-        userResult.rows[0];
+      const user = result.rows[0];
 
-      // Only reward once per minute
+      // 1 earning event every 60 seconds
       if (
         now -
-          Number(
-            user.last_chat_reward
-          ) >=
+          Number(user.last_chat_reward) >=
         60000
       ) {
-
         const personalDouble =
           Number(
             user.personal_double_until
           ) > now;
 
-        const serverDouble =
-          await isServerDoubleActive(
+        const globalDouble =
+          await serverDoubleActive(
             guildId
           );
 
-        // MAXIMUM IS 2X
-        // personal + server do NOT become 4x
-        const reward =
-          personalDouble ||
-          serverDouble
+        // Max 2x
+        const chatReward =
+          personalDouble || globalDouble
             ? 2
             : 1;
 
         await pool.query(
           `
           UPDATE users
-
           SET
-            balance =
-              balance + $1,
-
-            last_chat_reward =
-              $2
+            balance = balance + $1,
+            last_chat_reward = $2
 
           WHERE guild_id = $3
             AND user_id = $4
           `,
           [
-            reward,
+            chatReward,
             now,
             guildId,
             userId,
           ]
         );
       }
-
     } catch (error) {
-
       console.error(
-        "❌ Message tracking error:",
+        "❌ Chat tracking error:",
         error
       );
     }
   }
 );
 
-// ===============================
+// ======================================================
 // INTERACTIONS
-// ===============================
+// ======================================================
 
 client.on(
   Events.InteractionCreate,
   async interaction => {
-
     try {
 
-      // ===========================
+      // ==================================================
+      // /SEND MODAL SUBMISSION
+      // ==================================================
+
+      if (
+        interaction.isModalSubmit() &&
+        interaction.customId.startsWith(
+          "send_modal:"
+        )
+      ) {
+        if (!isAdmin(interaction)) {
+          return interaction.reply({
+            content:
+              "❌ Only administrators can use this.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
+
+        const channelId =
+          interaction.customId.split(":")[1];
+
+        const channel =
+          interaction.guild.channels.cache.get(
+            channelId
+          );
+
+        if (
+          !channel ||
+          !channel.isTextBased()
+        ) {
+          return interaction.reply({
+            content:
+              "❌ I couldn't find that channel.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
+
+        const title =
+          interaction.fields.getTextInputValue(
+            "send_title"
+          );
+
+        const message =
+          interaction.fields.getTextInputValue(
+            "send_message"
+          );
+
+        const image =
+          interaction.fields.getTextInputValue(
+            "send_image"
+          );
+
+        const embed =
+          new EmbedBuilder()
+            .setTitle(title)
+            .setDescription(message)
+            .setColor(0x38bdf8)
+            .setFooter({
+              text: "Wealth By Lords",
+            })
+            .setTimestamp();
+
+        if (image.trim()) {
+          try {
+            new URL(image);
+            embed.setImage(image);
+          } catch {
+            return interaction.reply({
+              content:
+                "❌ That image URL is invalid.",
+              flags:
+                MessageFlags.Ephemeral,
+            });
+          }
+        }
+
+        await channel.send({
+          embeds: [embed],
+        });
+
+        return interaction.reply({
+          content:
+            `✅ Message sent to ${channel}.`,
+          flags:
+            MessageFlags.Ephemeral,
+        });
+      }
+
+      // ==================================================
       // BUTTONS
-      // ===========================
+      // ==================================================
 
       if (interaction.isButton()) {
 
-        // =========================
-        // TOKEN DROP CLAIM
-        // =========================
+        // =================================================
+        // DROP CLAIM
+        // =================================================
 
         if (
           interaction.customId.startsWith(
             "drop_claim:"
           )
         ) {
-
           const dropId =
             interaction.customId.split(
               ":"
@@ -698,7 +709,6 @@ client.on(
             await pool.connect();
 
           try {
-
             await db.query("BEGIN");
 
             const result =
@@ -712,10 +722,7 @@ client.on(
                 [dropId]
               );
 
-            if (
-              result.rows.length === 0
-            ) {
-
+            if (!result.rows.length) {
               await db.query(
                 "ROLLBACK"
               );
@@ -732,14 +739,13 @@ client.on(
               result.rows[0];
 
             if (drop.claimed_by) {
-
               await db.query(
                 "ROLLBACK"
               );
 
               return interaction.reply({
                 content:
-                  `❌ Already claimed by <@${drop.claimed_by}>.`,
+                  `❌ This drop was already claimed by <@${drop.claimed_by}>.`,
                 flags:
                   MessageFlags.Ephemeral,
               });
@@ -754,7 +760,6 @@ client.on(
             await db.query(
               `
               UPDATE users
-
               SET balance =
                 balance + $1
 
@@ -771,7 +776,6 @@ client.on(
             await db.query(
               `
               UPDATE token_drops
-
               SET
                 claimed_by = $1,
                 claimed_at = $2
@@ -785,29 +789,25 @@ client.on(
               ]
             );
 
-            await db.query(
-              "COMMIT"
-            );
+            await db.query("COMMIT");
 
-            const claimedEmbed =
+            const embed =
               new EmbedBuilder()
                 .setTitle(
                   "🎁 WBL TOKEN DROP — CLAIMED"
                 )
                 .setDescription(
-                  `🏆 ${interaction.user} was first and claimed **${Number(
+                  `🏆 ${interaction.user} was first and won **${Number(
                     drop.amount
                   ).toLocaleString()} WBL Tokens**!`
                 )
-                .setColor(
-                  0x38bdf8
-                )
+                .setColor(0x38bdf8)
                 .setFooter({
                   text:
                     "Wealth By Lords",
                 });
 
-            const disabledRow =
+            const disabledButton =
               new ActionRowBuilder()
                 .addComponents(
                   new ButtonBuilder()
@@ -815,54 +815,41 @@ client.on(
                       `drop_claim:${dropId}`
                     )
                     .setLabel(
-                      "Claimed"
+                      "CLAIMED"
                     )
                     .setStyle(
                       ButtonStyle.Secondary
                     )
-                    .setDisabled(
-                      true
-                    )
+                    .setDisabled(true)
                 );
 
-            await interaction.update({
-              embeds: [
-                claimedEmbed,
-              ],
+            return interaction.update({
+              embeds: [embed],
               components: [
-                disabledRow,
+                disabledButton,
               ],
             });
 
-            return;
-
           } catch (error) {
-
             await db
               .query("ROLLBACK")
               .catch(() => {});
 
             throw error;
-
           } finally {
-
             db.release();
           }
         }
 
-        // =========================
-        // SHOP BUY BUTTON
-        // =========================
+        // =================================================
+        // SHOP BUY
+        // =================================================
 
         if (
           interaction.customId.startsWith(
             "shop_buy:"
           )
         ) {
-
-          if (!interaction.guildId)
-            return;
-
           const itemId =
             interaction.customId.split(
               ":"
@@ -871,14 +858,14 @@ client.on(
           const item =
             SHOP_ITEMS.find(
               shopItem =>
-                shopItem.id === itemId
+                shopItem.id ===
+                itemId
             );
 
           if (!item) {
-
             return interaction.reply({
               content:
-                "❌ That shop item no longer exists.",
+                "❌ This item no longer exists.",
               flags:
                 MessageFlags.Ephemeral,
             });
@@ -888,7 +875,6 @@ client.on(
             await pool.connect();
 
           try {
-
             await db.query("BEGIN");
 
             await ensureUser(
@@ -917,17 +903,15 @@ client.on(
                 ]
               );
 
-            const user =
+            const data =
               result.rows[0];
 
             const balance =
-              Number(user.balance);
+              Number(data.balance);
 
             if (
-              balance <
-              item.price
+              balance < item.price
             ) {
-
               await db.query(
                 "ROLLBACK"
               );
@@ -937,17 +921,15 @@ client.on(
                   `❌ You need **${(
                     item.price -
                     balance
-                  ).toLocaleString()}** more WBL Tokens for **${item.name}**.`,
+                  ).toLocaleString()} more WBL Tokens** to buy **${item.name}**.`,
                 flags:
                   MessageFlags.Ephemeral,
               });
             }
 
-            // REMOVE TOKENS
             await db.query(
               `
               UPDATE users
-
               SET balance =
                 balance - $1
 
@@ -961,29 +943,26 @@ client.on(
               ]
             );
 
-            // PERSONAL 2X BOOST
+            // 30-day personal 2x
             if (
-              item.id ===
-              "double30"
+              item.id === "double30"
             ) {
-
               const now =
                 Date.now();
 
-              const currentUntil =
+              const current =
                 Number(
-                  user.personal_double_until
+                  data.personal_double_until
                 );
 
-              // buying again extends it
-              const startFrom =
+              const startingPoint =
                 Math.max(
                   now,
-                  currentUntil
+                  current
                 );
 
               const newUntil =
-                startFrom +
+                startingPoint +
                 30 *
                   24 *
                   60 *
@@ -993,7 +972,6 @@ client.on(
               await db.query(
                 `
                 UPDATE users
-
                 SET personal_double_until =
                   $1
 
@@ -1008,7 +986,6 @@ client.on(
               );
             }
 
-            // RECORD PURCHASE
             await db.query(
               `
               INSERT INTO purchases (
@@ -1039,32 +1016,33 @@ client.on(
               ]
             );
 
-            await db.query(
-              "COMMIT"
-            );
+            await db.query("COMMIT");
 
-            const extra =
+            if (
               item.id === "double30"
-                ? "\n⚡ Your **2x chat-token boost is active for 30 days**."
-                : "\n📩 Purchase recorded. WBL staff will handle rewards that require manual delivery.";
+            ) {
+              return interaction.reply({
+                content:
+                  `✅ You bought **${item.name}**!\n⚡ Your 2x chat-token boost is active for **30 days**.`,
+                flags:
+                  MessageFlags.Ephemeral,
+              });
+            }
 
             return interaction.reply({
               content:
-                `✅ You bought **${item.name}** for **${item.price.toLocaleString()} WBL Tokens**.${extra}`,
+                `✅ You bought **${item.name}** for **${item.price.toLocaleString()} WBL Tokens**.\n\n📩 Your purchase has been recorded. WBL staff will handle the reward.`,
               flags:
                 MessageFlags.Ephemeral,
             });
 
           } catch (error) {
-
             await db
               .query("ROLLBACK")
               .catch(() => {});
 
             throw error;
-
           } finally {
-
             db.release();
           }
         }
@@ -1072,86 +1050,140 @@ client.on(
         return;
       }
 
-      // ===========================
+      // ==================================================
       // SLASH COMMANDS
-      // ===========================
+      // ==================================================
 
       if (
         !interaction.isChatInputCommand()
-      )
+      ) {
         return;
+      }
 
-      if (!interaction.guildId)
+      if (!interaction.guildId) {
         return;
+      }
 
       const guildId =
         interaction.guildId;
 
-      // ===========================
-      // /SEND — ADMIN
-      // ===========================
+      // ==================================================
+      // /SEND
+      // ADMIN ONLY
+      // ==================================================
 
       if (
         interaction.commandName ===
         "send"
       ) {
+        if (!isAdmin(interaction)) {
+          return interaction.reply({
+            content:
+              "❌ Only administrators can use `/send`.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
 
         const channel =
           interaction.options.getChannel(
             "channel"
           );
 
-        const title =
-          interaction.options.getString(
-            "title"
-          );
-
-        const message =
-          interaction.options.getString(
-            "message"
-          );
-
-        const image =
-          interaction.options.getString(
-            "image"
-          );
-
-        const embed =
-          new EmbedBuilder()
-            .setTitle(title)
-            .setDescription(message)
-            .setColor(
-              0x38bdf8
+        const modal =
+          new ModalBuilder()
+            .setCustomId(
+              `send_modal:${channel.id}`
             )
-            .setFooter({
-              text:
-                "Wealth By Lords",
-            })
-            .setTimestamp();
+            .setTitle(
+              "Send WBL Message"
+            );
 
-        if (image)
-          embed.setImage(image);
+        const titleInput =
+          new TextInputBuilder()
+            .setCustomId(
+              "send_title"
+            )
+            .setLabel("Title")
+            .setPlaceholder(
+              "WBL ANNOUNCEMENT"
+            )
+            .setStyle(
+              TextInputStyle.Short
+            )
+            .setMaxLength(256)
+            .setRequired(true);
 
-        await channel.send({
-          embeds: [embed],
-        });
+        const messageInput =
+          new TextInputBuilder()
+            .setCustomId(
+              "send_message"
+            )
+            .setLabel("Message")
+            .setPlaceholder(
+              "Write your full message here...\n\nYou can use blank lines."
+            )
+            .setStyle(
+              TextInputStyle.Paragraph
+            )
+            .setMaxLength(4000)
+            .setRequired(true);
 
-        return interaction.reply({
-          content:
-            `✅ Message sent to ${channel}`,
-          flags:
-            MessageFlags.Ephemeral,
-        });
+        const imageInput =
+          new TextInputBuilder()
+            .setCustomId(
+              "send_image"
+            )
+            .setLabel(
+              "Image URL (optional)"
+            )
+            .setPlaceholder(
+              "https://..."
+            )
+            .setStyle(
+              TextInputStyle.Short
+            )
+            .setRequired(false);
+
+        modal.addComponents(
+          new ActionRowBuilder()
+            .addComponents(
+              titleInput
+            ),
+
+          new ActionRowBuilder()
+            .addComponents(
+              messageInput
+            ),
+
+          new ActionRowBuilder()
+            .addComponents(
+              imageInput
+            )
+        );
+
+        return interaction.showModal(
+          modal
+        );
       }
 
-      // ===========================
-      // /GIVE — ADMIN
-      // ===========================
+      // ==================================================
+      // /GIVE
+      // ADMIN ONLY
+      // ==================================================
 
       if (
         interaction.commandName ===
         "give"
       ) {
+        if (!isAdmin(interaction)) {
+          return interaction.reply({
+            content:
+              "❌ Only administrators can use `/give`.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
 
         const user =
           interaction.options.getUser(
@@ -1164,7 +1196,6 @@ client.on(
           );
 
         if (user.bot) {
-
           return interaction.reply({
             content:
               "❌ You cannot give tokens to a bot.",
@@ -1181,7 +1212,6 @@ client.on(
         await pool.query(
           `
           UPDATE users
-
           SET balance =
             balance + $1
 
@@ -1197,21 +1227,30 @@ client.on(
 
         return interaction.reply({
           content:
-            `✅ Gave ${user} **${amount.toLocaleString()} WBL Tokens**.`,
+            `✅ ${user} received **${amount.toLocaleString()} WBL Tokens**.`,
           flags:
             MessageFlags.Ephemeral,
         });
       }
 
-      // ===========================
-      // /DROP — ADMIN
-      // FIRST PERSON ONLY
-      // ===========================
+      // ==================================================
+      // /DROP
+      // ADMIN ONLY
+      // FIRST PERSON WINS
+      // ==================================================
 
       if (
         interaction.commandName ===
         "drop"
       ) {
+        if (!isAdmin(interaction)) {
+          return interaction.reply({
+            content:
+              "❌ Only administrators can use `/drop`.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
 
         const amount =
           interaction.options.getInteger(
@@ -1260,17 +1299,17 @@ client.on(
               "🎁 WBL TOKEN DROP"
             )
             .setDescription(
-              `First person to press **CLAIM** wins **${amount.toLocaleString()} WBL Tokens**!\n\nThe drop stays open until someone claims it.`
+              `A WBL Token Drop has appeared!\n\n` +
+              `🪙 **${amount.toLocaleString()} WBL Tokens**\n\n` +
+              `🏃 The **first person** to press **CLAIM** wins everything!`
             )
-            .setColor(
-              0x38bdf8
-            )
+            .setColor(0x38bdf8)
             .setFooter({
               text:
-                "Wealth By Lords",
+                "First come, first served • Wealth By Lords",
             });
 
-        const row =
+        const button =
           new ActionRowBuilder()
             .addComponents(
               new ButtonBuilder()
@@ -1278,7 +1317,7 @@ client.on(
                   `drop_claim:${dropId}`
                 )
                 .setLabel(
-                  "CLAIM"
+                  "🎁 CLAIM"
                 )
                 .setStyle(
                   ButtonStyle.Success
@@ -1288,15 +1327,13 @@ client.on(
         const sent =
           await channel.send({
             embeds: [embed],
-            components: [row],
+            components: [button],
           });
 
         await pool.query(
           `
           UPDATE token_drops
-
           SET message_id = $1
-
           WHERE id = $2
           `,
           [
@@ -1307,20 +1344,29 @@ client.on(
 
         return interaction.reply({
           content:
-            `✅ Drop posted in ${channel}.`,
+            `✅ Token drop created in ${channel}.`,
           flags:
             MessageFlags.Ephemeral,
         });
       }
 
-      // ===========================
-      // /DOUBLE — ADMIN
-      // ===========================
+      // ==================================================
+      // /DOUBLE
+      // ADMIN ONLY
+      // ==================================================
 
       if (
         interaction.commandName ===
         "double"
       ) {
+        if (!isAdmin(interaction)) {
+          return interaction.reply({
+            content:
+              "❌ Only administrators can use `/double`.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
 
         const minutes =
           interaction.options.getInteger(
@@ -1338,19 +1384,13 @@ client.on(
             double_until
           )
 
-          VALUES (
-            $1,
-            $2
-          )
+          VALUES ($1, $2)
 
-          ON CONFLICT (
-            guild_id
-          )
+          ON CONFLICT (guild_id)
 
-          DO UPDATE
-
-          SET double_until =
-            EXCLUDED.double_until
+          DO UPDATE SET
+            double_until =
+              EXCLUDED.double_until
           `,
           [
             guildId,
@@ -1361,14 +1401,14 @@ client.on(
         const embed =
           new EmbedBuilder()
             .setTitle(
-              "⚡ DOUBLE TOKEN EVENT"
+              "⚡ WBL DOUBLE TOKEN EVENT"
             )
             .setDescription(
-              `Everyone now earns **2 WBL Tokens per active chat minute** for **${minutes} minute${minutes === 1 ? "" : "s"}**!\n\nPersonal 2x boosts do not stack above 2x.`
+              `Chat rewards are now **2x** for **${minutes} minute${minutes === 1 ? "" : "s"}**!\n\n` +
+              `💬 Normal: **1 → 2 tokens/minute**\n` +
+              `⚡ Maximum multiplier: **2x**`
             )
-            .setColor(
-              0x38bdf8
-            )
+            .setColor(0x38bdf8)
             .setFooter({
               text:
                 "Wealth By Lords",
@@ -1379,15 +1419,14 @@ client.on(
         });
       }
 
-      // ===========================
+      // ==================================================
       // /WALLET
-      // ===========================
+      // ==================================================
 
       if (
         interaction.commandName ===
         "wallet"
       ) {
-
         const target =
           interaction.options.getUser(
             "user"
@@ -1420,18 +1459,15 @@ client.on(
         const data =
           result.rows[0];
 
-        const boosted =
+        const boostUntil =
           Number(
             data.personal_double_until
-          ) >
-          Date.now();
+          );
 
-        const boostText =
-          boosted
-            ? `\n⚡ 2x chat boost active until <t:${Math.floor(
-                Number(
-                  data.personal_double_until
-                ) / 1000
+        const boost =
+          boostUntil > Date.now()
+            ? `\n\n⚡ **2x Chat Boost:** Active until <t:${Math.floor(
+                boostUntil / 1000
               )}:R>`
             : "";
 
@@ -1440,17 +1476,15 @@ client.on(
             .setTitle(
               "💰 WBL Wallet"
             )
-            .setDescription(
-              `**${target.username}** has **${Number(
-                data.balance
-              ).toLocaleString()} WBL Tokens** 🪙${boostText}`
-            )
             .setThumbnail(
               target.displayAvatarURL()
             )
-            .setColor(
-              0x38bdf8
+            .setDescription(
+              `${target} has **${Number(
+                data.balance
+              ).toLocaleString()} WBL Tokens** 🪙${boost}`
             )
+            .setColor(0x38bdf8)
             .setFooter({
               text:
                 "Wealth By Lords Economy",
@@ -1461,15 +1495,14 @@ client.on(
         });
       }
 
-      // ===========================
+      // ==================================================
       // /COLLECT
-      // ===========================
+      // ==================================================
 
       if (
         interaction.commandName ===
         "collect"
       ) {
-
         await ensureUser(
           guildId,
           interaction.user.id
@@ -1481,16 +1514,14 @@ client.on(
             interaction.user.id
           );
 
-        // NEED 5 MESSAGES TODAY
         if (
-          Number(
-            daily.messages
-          ) < 5
+          Number(daily.messages) <
+          5
         ) {
-
           return interaction.reply({
             content:
-              `❌ You need **5 messages today** before collecting.\nYou currently have **${daily.messages}/5**.`,
+              `❌ You need to send **5 valid messages today** first.\n\n` +
+              `Progress: **${daily.messages}/5**`,
             flags:
               MessageFlags.Ephemeral,
           });
@@ -1514,7 +1545,7 @@ client.on(
             ]
           );
 
-        const user =
+        const data =
           result.rows[0];
 
         const cooldown =
@@ -1523,21 +1554,20 @@ client.on(
           60 *
           1000;
 
-        const next =
+        const nextCollect =
           Number(
-            user.last_collect
+            data.last_collect
           ) +
           cooldown;
 
         if (
           Date.now() <
-          next
+          nextCollect
         ) {
-
           return interaction.reply({
             content:
-              `⏳ You can collect again <t:${Math.floor(
-                next / 1000
+              `⏳ You already collected your reward.\n\nCome back <t:${Math.floor(
+                nextCollect / 1000
               )}:R>.`,
             flags:
               MessageFlags.Ephemeral,
@@ -1545,19 +1575,14 @@ client.on(
         }
 
         const reward =
-          randomInt(
-            0,
-            150
-          );
+          randomInt(0, 150);
 
         await pool.query(
           `
           UPDATE users
-
           SET
             balance =
               balance + $1,
-
             last_collect =
               $2
 
@@ -1575,19 +1600,17 @@ client.on(
         const embed =
           new EmbedBuilder()
             .setTitle(
-              "🎁 WBL Collect"
+              "🎁 WBL COLLECT"
             )
             .setDescription(
               reward === 0
-                ? "💀 Unlucky — you collected **0 WBL Tokens** this time."
-                : `You collected **${reward} WBL Tokens** 🪙!`
+                ? `💀 Unlucky! You received **0 WBL Tokens**.`
+                : `You collected **${reward} WBL Tokens**! 🪙`
             )
-            .setColor(
-              0x38bdf8
-            )
+            .setColor(0x38bdf8)
             .setFooter({
               text:
-                "Come back in 24 hours",
+                "Available again in 24 hours",
             });
 
         return interaction.reply({
@@ -1595,15 +1618,14 @@ client.on(
         });
       }
 
-      // ===========================
+      // ==================================================
       // /DAILY
-      // ===========================
+      // ==================================================
 
       if (
         interaction.commandName ===
         "daily"
       ) {
-
         await ensureUser(
           guildId,
           interaction.user.id
@@ -1616,41 +1638,32 @@ client.on(
           );
 
         if (daily.claimed) {
-
           return interaction.reply({
             content:
-              `✅ Today's challenge is already claimed.\nProgress: **${daily.messages}/${daily.target}**.`,
+              `✅ You already completed today's daily challenge.\n\nMessages: **${daily.messages}/${daily.target}**`,
             flags:
               MessageFlags.Ephemeral,
           });
         }
 
-        // NOT FINISHED
         if (
-          Number(
-            daily.messages
-          ) <
-          Number(
-            daily.target
-          )
+          Number(daily.messages) <
+          Number(daily.target)
         ) {
-
           const embed =
             new EmbedBuilder()
               .setTitle(
-                "📅 WBL Daily Challenge"
+                "📅 WBL DAILY CHALLENGE"
               )
               .setDescription(
-                `Send **${daily.target} messages today**.\n\n` +
-                `Progress: **${daily.messages}/${daily.target}**\n` +
-                `Reward: **${daily.reward} WBL Tokens** 🪙`
+                `💬 Send **${daily.target} messages today**\n\n` +
+                `📊 Progress: **${daily.messages}/${daily.target}**\n\n` +
+                `🪙 Reward: **${daily.reward} WBL Tokens**`
               )
-              .setColor(
-                0x38bdf8
-              )
+              .setColor(0x38bdf8)
               .setFooter({
                 text:
-                  "Resets daily in Luxembourg time",
+                  "Resets daily • Luxembourg time",
               });
 
           return interaction.reply({
@@ -1658,17 +1671,13 @@ client.on(
           });
         }
 
-        // CLAIM DAILY REWARD
         const db =
           await pool.connect();
 
         try {
+          await db.query("BEGIN");
 
-          await db.query(
-            "BEGIN"
-          );
-
-          const check =
+          const result =
             await db.query(
               `
               SELECT
@@ -1690,17 +1699,17 @@ client.on(
               ]
             );
 
-          if (
-            check.rows[0].claimed
-          ) {
+          const current =
+            result.rows[0];
 
+          if (current.claimed) {
             await db.query(
               "ROLLBACK"
             );
 
             return interaction.reply({
               content:
-                "✅ You already claimed today's challenge.",
+                "✅ You already claimed today's reward.",
               flags:
                 MessageFlags.Ephemeral,
             });
@@ -1715,7 +1724,6 @@ client.on(
           await db.query(
             `
             UPDATE users
-
             SET balance =
               balance + $1
 
@@ -1723,8 +1731,7 @@ client.on(
               AND user_id = $3
             `,
             [
-              check.rows[0]
-                .reward,
+              current.reward,
               guildId,
               interaction.user.id,
             ]
@@ -1733,9 +1740,7 @@ client.on(
           await db.query(
             `
             UPDATE daily_stats
-
-            SET claimed =
-              TRUE
+            SET claimed = TRUE
 
             WHERE guild_id = $1
               AND user_id = $2
@@ -1748,40 +1753,34 @@ client.on(
             ]
           );
 
-          await db.query(
-            "COMMIT"
-          );
+          await db.query("COMMIT");
 
           return interaction.reply({
             content:
-              `🏆 Daily challenge complete!\nYou received **${Number(
-                check.rows[0].reward
-              ).toLocaleString()} WBL Tokens** 🪙.`,
+              `🏆 **Daily Challenge Complete!**\n\nYou earned **${Number(
+                current.reward
+              ).toLocaleString()} WBL Tokens** 🪙`,
           });
 
         } catch (error) {
-
           await db
             .query("ROLLBACK")
             .catch(() => {});
 
           throw error;
-
         } finally {
-
           db.release();
         }
       }
 
-      // ===========================
+      // ==================================================
       // /LEADERBOARD
-      // ===========================
+      // ==================================================
 
       if (
         interaction.commandName ===
         "leaderboard"
       ) {
-
         const result =
           await pool.query(
             `
@@ -1793,18 +1792,14 @@ client.on(
 
             WHERE guild_id = $1
 
-            ORDER BY
-              balance DESC
+            ORDER BY balance DESC
 
             LIMIT 10
             `,
             [guildId]
           );
 
-        if (
-          result.rows.length === 0
-        ) {
-
+        if (!result.rows.length) {
           return interaction.reply(
             "Nobody has WBL Tokens yet."
           );
@@ -1820,47 +1815,41 @@ client.on(
 
         for (
           let i = 0;
-          i <
-          result.rows.length;
+          i < result.rows.length;
           i++
         ) {
-
           const row =
             result.rows[i];
 
-          let userName =
+          let username =
             `<@${row.user_id}>`;
 
           try {
-
             const user =
               await client.users.fetch(
                 row.user_id
               );
 
-            userName =
+            username =
               `**${user.username}**`;
-
           } catch {}
 
           lines.push(
-            `${medals[i] || `**${i + 1}.**`} ${userName} — 🪙 ${Number(
+            `${medals[i] || `**${i + 1}.**`} ${username} — 🪙 **${Number(
               row.balance
-            ).toLocaleString()}`
+            ).toLocaleString()}**`
           );
         }
 
         const embed =
           new EmbedBuilder()
             .setTitle(
-              "🏆 WBL Token Leaderboard"
+              "🏆 WBL TOKEN LEADERBOARD"
             )
             .setDescription(
               lines.join("\n")
             )
-            .setColor(
-              0x38bdf8
-            )
+            .setColor(0x38bdf8)
             .setFooter({
               text:
                 "Wealth By Lords",
@@ -1871,20 +1860,21 @@ client.on(
         });
       }
 
-      // ===========================
+      // ==================================================
       // /SHOP
-      // ===========================
+      // ==================================================
 
       if (
         interaction.commandName ===
         "shop"
       ) {
-
         const description =
           SHOP_ITEMS
             .map(
               (item, index) =>
-                `**${index + 1}. ${item.name}** — 🪙 **${item.price.toLocaleString()}**\n${item.description}`
+                `**${index + 1}. ${item.name}**\n` +
+                `🪙 **${item.price.toLocaleString()} Tokens**\n` +
+                `${item.description}`
             )
             .join("\n\n");
 
@@ -1894,14 +1884,13 @@ client.on(
               "🛒 WBL TOKEN SHOP"
             )
             .setDescription(
-              `${description}\n\nPress a **Buy** button below. The bot checks your balance automatically.`
+              `${description}\n\n` +
+              `Use the **Buy #** buttons below to purchase an item.`
             )
-            .setColor(
-              0x38bdf8
-            )
+            .setColor(0x38bdf8)
             .setFooter({
               text:
-                "Wealth By Lords",
+                "Wealth By Lords Economy",
             });
 
         return interaction.reply({
@@ -1912,7 +1901,6 @@ client.on(
       }
 
     } catch (error) {
-
       console.error(
         "❌ Interaction error:",
         error
@@ -1922,7 +1910,6 @@ client.on(
         interaction.replied ||
         interaction.deferred
       ) {
-
         return interaction
           .followUp({
             content:

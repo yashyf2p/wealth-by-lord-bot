@@ -1,15 +1,14 @@
 {
-  "name": "wealth-by-lords-bot",
-  "version": "3.0.0",
-  "description": "Wealth By Lords Discord Bot",
+  "name": "ttc-discord-bot",
+  "version": "1.0.0",
+  "description": "TTC Discord Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "discord.js": "^14.22.1",
-    "dotenv": "^16.6.1",
-    "pg": "^8.16.3"
+    "dotenv": "^16.6.1"
   },
   "engines": {
     "node": ">=18"

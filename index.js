@@ -12,14 +12,34 @@ const {
   ChannelType,
   EmbedBuilder,
   ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   Events,
   MessageFlags,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  StringSelectMenuBuilder,
+  PermissionsBitField,
 } = require("discord.js");
 
 const token = process.env.DISCORD_TOKEN;
+
+// ======================================================
+// SETTINGS
+// ======================================================
+
+const TICKET_CATEGORY_ID = "1555971102751326328";
+
+const STAFF_ROLE_NAMES = [
+  "Founder",
+  "Admin",
+  "Staff",
+];
+
+// ======================================================
+// ENVIRONMENT
+// ======================================================
 
 if (!token) {
   console.error("❌ Missing DISCORD_TOKEN");
@@ -41,7 +61,9 @@ http
     res.end("TTC Bot is online!");
   })
   .listen(PORT, () => {
-    console.log(`🌐 Web server running on port ${PORT}`);
+    console.log(
+      `🌐 Web server running on port ${PORT}`
+    );
   });
 
 // ======================================================
@@ -55,23 +77,87 @@ const client = new Client({
 });
 
 // ======================================================
+// HELPERS
+// ======================================================
+
+function isStaff(member) {
+  if (!member) return false;
+
+  if (
+    member.permissions.has(
+      PermissionFlagsBits.Administrator
+    )
+  ) {
+    return true;
+  }
+
+  return member.roles.cache.some(role =>
+    STAFF_ROLE_NAMES.includes(role.name)
+  );
+}
+
+function cleanChannelName(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 80);
+}
+
+function getTicketTypeLabel(type) {
+  const types = {
+    support: "Support",
+    mc_collab: "MC Collab",
+    report: "Report a Player",
+    staff_application: "Staff Application",
+    other: "Other / General Inquiry",
+  };
+
+  return types[type] || "Ticket";
+}
+
+// ======================================================
 // COMMANDS
 // ======================================================
 
 const commands = [
+
+  // /send
   new SlashCommandBuilder()
     .setName("send")
     .setDescription("Send a TTC embed message")
     .addChannelOption(option =>
       option
         .setName("channel")
-        .setDescription("Choose where the message should be sent")
-        .addChannelTypes(ChannelType.GuildText)
+        .setDescription(
+          "Choose where the message should be sent"
+        )
+        .addChannelTypes(
+          ChannelType.GuildText
+        )
         .setRequired(true)
     )
     .setDefaultMemberPermissions(
       PermissionFlagsBits.Administrator
     ),
+
+  // /ticketpanel
+  new SlashCommandBuilder()
+    .setName("ticketpanel")
+    .setDescription(
+      "Post the TTC ticket selection panel"
+    )
+    .setDefaultMemberPermissions(
+      PermissionFlagsBits.Administrator
+    ),
+
+  // /closeticket
+  new SlashCommandBuilder()
+    .setName("closeticket")
+    .setDescription(
+      "Close the current ticket"
+    ),
+
 ].map(command => command.toJSON());
 
 // ======================================================
@@ -81,16 +167,17 @@ const commands = [
 client.once(
   Events.ClientReady,
   async readyClient => {
+
     console.log(
       `✅ Logged in as ${readyClient.user.tag}`
     );
 
-    const rest =
-      new REST({
-        version: "10",
-      }).setToken(token);
+    const rest = new REST({
+      version: "10",
+    }).setToken(token);
 
     try {
+
       await rest.put(
         Routes.applicationCommands(
           readyClient.user.id
@@ -105,6 +192,7 @@ client.once(
       );
 
     } catch (error) {
+
       console.error(
         "❌ Failed to register commands:",
         error
@@ -120,21 +208,24 @@ client.once(
 client.on(
   Events.InteractionCreate,
   async interaction => {
+
     try {
 
       // ==================================================
-      // /SEND COMMAND
+      // /SEND
       // ==================================================
 
       if (
         interaction.isChatInputCommand() &&
         interaction.commandName === "send"
       ) {
+
         if (
           !interaction.memberPermissions?.has(
             PermissionFlagsBits.Administrator
           )
         ) {
+
           return interaction.reply({
             content:
               "❌ Only administrators can use `/send`.",
@@ -162,9 +253,7 @@ client.on(
             .setCustomId(
               "send_title"
             )
-            .setLabel(
-              "Title"
-            )
+            .setLabel("Title")
             .setPlaceholder(
               "TTC ANNOUNCEMENT"
             )
@@ -179,9 +268,7 @@ client.on(
             .setCustomId(
               "send_message"
             )
-            .setLabel(
-              "Message"
-            )
+            .setLabel("Message")
             .setPlaceholder(
               "Write your message here...\n\nYou can use blank lines."
             )
@@ -230,7 +317,7 @@ client.on(
       }
 
       // ==================================================
-      // SEND MODAL SUBMISSION
+      // SEND MODAL
       // ==================================================
 
       if (
@@ -239,18 +326,6 @@ client.on(
           "send_modal:"
         )
       ) {
-        if (
-          !interaction.memberPermissions?.has(
-            PermissionFlagsBits.Administrator
-          )
-        ) {
-          return interaction.reply({
-            content:
-              "❌ Only administrators can send messages.",
-            flags:
-              MessageFlags.Ephemeral,
-          });
-        }
 
         const channelId =
           interaction.customId.split(
@@ -266,6 +341,7 @@ client.on(
           !channel ||
           !channel.isTextBased()
         ) {
+
           return interaction.reply({
             content:
               "❌ I couldn't find that channel.",
@@ -275,19 +351,22 @@ client.on(
         }
 
         const title =
-          interaction.fields.getTextInputValue(
-            "send_title"
-          );
+          interaction.fields
+            .getTextInputValue(
+              "send_title"
+            );
 
         const message =
-          interaction.fields.getTextInputValue(
-            "send_message"
-          );
+          interaction.fields
+            .getTextInputValue(
+              "send_message"
+            );
 
         const image =
-          interaction.fields.getTextInputValue(
-            "send_image"
-          );
+          interaction.fields
+            .getTextInputValue(
+              "send_image"
+            );
 
         const embed =
           new EmbedBuilder()
@@ -295,19 +374,22 @@ client.on(
             .setDescription(message)
             .setColor(0x38bdf8)
             .setFooter({
-              text:
-                "TTC",
+              text: "TTC",
             })
             .setTimestamp();
 
         if (image.trim()) {
+
           try {
+
             new URL(image);
 
             embed.setImage(
               image.trim()
             );
+
           } catch {
+
             return interaction.reply({
               content:
                 "❌ The image URL isn't valid.",
@@ -329,7 +411,487 @@ client.on(
         });
       }
 
+      // ==================================================
+      // /TICKETPANEL
+      // ==================================================
+
+      if (
+        interaction.isChatInputCommand() &&
+        interaction.commandName ===
+          "ticketpanel"
+      ) {
+
+        if (
+          !interaction.memberPermissions?.has(
+            PermissionFlagsBits.Administrator
+          )
+        ) {
+
+          return interaction.reply({
+            content:
+              "❌ Only administrators can create the ticket panel.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
+
+        const embed =
+          new EmbedBuilder()
+            .setTitle(
+              "🎫 TTC TICKETS"
+            )
+            .setDescription(
+              "Need help or want to contact the TTC team?\n\n" +
+              "Select the type of ticket you want to open below.\n\n" +
+              "Please only create a ticket when necessary."
+            )
+            .setColor(0x38bdf8)
+            .setFooter({
+              text:
+                "TTC Support System",
+            });
+
+        const menu =
+          new StringSelectMenuBuilder()
+            .setCustomId(
+              "ticket_select"
+            )
+            .setPlaceholder(
+              "Choose a ticket type..."
+            )
+            .addOptions(
+              {
+                label:
+                  "Support",
+                description:
+                  "Get help from TTC staff",
+                value:
+                  "support",
+                emoji: "🛠️",
+              },
+              {
+                label:
+                  "MC Collab",
+                description:
+                  "Contact TTC about an MC collaboration",
+                value:
+                  "mc_collab",
+                emoji: "🤝",
+              },
+              {
+                label:
+                  "Report a Player",
+                description:
+                  "Report a player or member",
+                value:
+                  "report",
+                emoji: "🚨",
+              },
+              {
+                label:
+                  "Staff Application",
+                description:
+                  "Apply to join TTC staff",
+                value:
+                  "staff_application",
+                emoji: "📝",
+              },
+              {
+                label:
+                  "Other / General Inquiry",
+                description:
+                  "Anything that doesn't fit the other categories",
+                value:
+                  "other",
+                emoji: "❓",
+              }
+            );
+
+        const row =
+          new ActionRowBuilder()
+            .addComponents(menu);
+
+        await interaction.channel.send({
+          embeds: [embed],
+          components: [row],
+        });
+
+        return interaction.reply({
+          content:
+            "✅ TTC ticket panel created.",
+          flags:
+            MessageFlags.Ephemeral,
+        });
+      }
+
+      // ==================================================
+      // TICKET SELECTION
+      // ==================================================
+
+      if (
+        interaction.isStringSelectMenu() &&
+        interaction.customId ===
+          "ticket_select"
+      ) {
+
+        const type =
+          interaction.values[0];
+
+        const typeLabel =
+          getTicketTypeLabel(type);
+
+        // Check for existing ticket
+        const existingTicket =
+          interaction.guild.channels.cache.find(
+            channel =>
+              channel.type ===
+                ChannelType.GuildText &&
+              channel.topic?.includes(
+                `ticketOwner:${interaction.user.id}`
+              )
+          );
+
+        if (existingTicket) {
+
+          return interaction.reply({
+            content:
+              `❌ You already have an open ticket: ${existingTicket}`,
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
+
+        const category =
+          interaction.guild.channels.cache.get(
+            TICKET_CATEGORY_ID
+          );
+
+        if (!category) {
+
+          return interaction.reply({
+            content:
+              "❌ I couldn't find the TTC ticket category.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
+
+        const staffRoles =
+          interaction.guild.roles.cache.filter(
+            role =>
+              STAFF_ROLE_NAMES.includes(
+                role.name
+              )
+          );
+
+        const overwrites = [
+          {
+            id:
+              interaction.guild.roles.everyone.id,
+            deny: [
+              PermissionsBitField.Flags
+                .ViewChannel,
+            ],
+          },
+          {
+            id:
+              interaction.user.id,
+            allow: [
+              PermissionsBitField.Flags
+                .ViewChannel,
+              PermissionsBitField.Flags
+                .SendMessages,
+              PermissionsBitField.Flags
+                .ReadMessageHistory,
+              PermissionsBitField.Flags
+                .AttachFiles,
+            ],
+          },
+          {
+            id:
+              client.user.id,
+            allow: [
+              PermissionsBitField.Flags
+                .ViewChannel,
+              PermissionsBitField.Flags
+                .SendMessages,
+              PermissionsBitField.Flags
+                .ManageChannels,
+              PermissionsBitField.Flags
+                .ReadMessageHistory,
+            ],
+          },
+        ];
+
+        for (
+          const role of
+          staffRoles.values()
+        ) {
+
+          overwrites.push({
+            id: role.id,
+            allow: [
+              PermissionsBitField.Flags
+                .ViewChannel,
+              PermissionsBitField.Flags
+                .SendMessages,
+              PermissionsBitField.Flags
+                .ReadMessageHistory,
+              PermissionsBitField.Flags
+                .AttachFiles,
+            ],
+          });
+        }
+
+        const username =
+          cleanChannelName(
+            interaction.user.username
+          );
+
+        const prefix =
+          cleanChannelName(
+            typeLabel
+          );
+
+        const ticketChannel =
+          await interaction.guild.channels.create(
+            {
+              name:
+                `${prefix}-${username}`,
+
+              type:
+                ChannelType.GuildText,
+
+              parent:
+                TICKET_CATEGORY_ID,
+
+              topic:
+                `ticketOwner:${interaction.user.id}|type:${type}|claimedBy:none`,
+
+              permissionOverwrites:
+                overwrites,
+            }
+          );
+
+        const ticketEmbed =
+          new EmbedBuilder()
+            .setTitle(
+              `🎫 ${typeLabel}`
+            )
+            .setDescription(
+              `Welcome ${interaction.user}!\n\n` +
+              `A member of the **TTC Staff Team** will help you here.\n\n` +
+              `Please explain what you need as clearly as possible.\n\n` +
+              `**Ticket Type:** ${typeLabel}`
+            )
+            .setColor(0x38bdf8)
+            .setFooter({
+              text:
+                "TTC Ticket System",
+            });
+
+        const buttons =
+          new ActionRowBuilder()
+            .addComponents(
+              new ButtonBuilder()
+                .setCustomId(
+                  "ticket_claim"
+                )
+                .setLabel(
+                  "Claim Ticket"
+                )
+                .setEmoji("🙋")
+                .setStyle(
+                  ButtonStyle.Primary
+                )
+            );
+
+        await ticketChannel.send({
+          content:
+            `${interaction.user}`,
+          embeds: [
+            ticketEmbed,
+          ],
+          components: [
+            buttons,
+          ],
+        });
+
+        return interaction.reply({
+          content:
+            `✅ Your ticket has been created: ${ticketChannel}`,
+          flags:
+            MessageFlags.Ephemeral,
+        });
+      }
+
+      // ==================================================
+      // CLAIM TICKET BUTTON
+      // ==================================================
+
+      if (
+        interaction.isButton() &&
+        interaction.customId ===
+          "ticket_claim"
+      ) {
+
+        if (
+          !isStaff(
+            interaction.member
+          )
+        ) {
+
+          return interaction.reply({
+            content:
+              "❌ Only TTC staff can claim tickets.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
+
+        const channel =
+          interaction.channel;
+
+        if (
+          !channel.topic?.includes(
+            "ticketOwner:"
+          )
+        ) {
+
+          return interaction.reply({
+            content:
+              "❌ This isn't a TTC ticket channel.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
+
+        if (
+          !channel.topic.includes(
+            "claimedBy:none"
+          )
+        ) {
+
+          return interaction.reply({
+            content:
+              "❌ This ticket has already been claimed.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
+
+        const newTopic =
+          channel.topic.replace(
+            "claimedBy:none",
+            `claimedBy:${interaction.user.id}`
+          );
+
+        await channel.setTopic(
+          newTopic
+        );
+
+        const disabledButton =
+          new ActionRowBuilder()
+            .addComponents(
+              new ButtonBuilder()
+                .setCustomId(
+                  "ticket_claimed"
+                )
+                .setLabel(
+                  `Claimed by ${interaction.user.username}`
+                )
+                .setStyle(
+                  ButtonStyle.Secondary
+                )
+                .setDisabled(true)
+            );
+
+        await interaction.update({
+          components: [
+            disabledButton,
+          ],
+        });
+
+        await channel.send({
+          content:
+            `🙋 ${interaction.user} has claimed this ticket.`,
+        });
+
+        return;
+      }
+
+      // ==================================================
+      // /CLOSETICKET
+      // ==================================================
+
+      if (
+        interaction.isChatInputCommand() &&
+        interaction.commandName ===
+          "closeticket"
+      ) {
+
+        if (
+          !isStaff(
+            interaction.member
+          )
+        ) {
+
+          return interaction.reply({
+            content:
+              "❌ Only TTC staff can close tickets.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
+
+        const channel =
+          interaction.channel;
+
+        if (
+          !channel.topic?.includes(
+            "ticketOwner:"
+          )
+        ) {
+
+          return interaction.reply({
+            content:
+              "❌ This command can only be used inside a ticket.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
+
+        await interaction.reply({
+          content:
+            "🔒 Ticket closing in **5 seconds**...",
+        });
+
+        setTimeout(
+          async () => {
+
+            try {
+
+              await channel.delete(
+                `Ticket closed by ${interaction.user.tag}`
+              );
+
+            } catch (error) {
+
+              console.error(
+                "❌ Failed to delete ticket:",
+                error
+              );
+            }
+
+          },
+          5000
+        );
+
+        return;
+      }
+
     } catch (error) {
+
       console.error(
         "❌ Interaction error:",
         error
@@ -339,6 +901,7 @@ client.on(
         interaction.replied ||
         interaction.deferred
       ) {
+
         return interaction
           .followUp({
             content:
@@ -362,4 +925,3 @@ client.on(
 );
 
 client.login(token);
-

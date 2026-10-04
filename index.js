@@ -106,7 +106,7 @@ function cleanChannelName(text) {
 function getTicketTypeLabel(type) {
   const types = {
     support: "Support",
-    mc_collab: "MC Collab",
+    matcherino: "Matcherino Collab",
     report: "Report a Player",
     staff_application: "Staff Application",
     other: "Other",
@@ -118,7 +118,7 @@ function getTicketTypeLabel(type) {
 function getTicketPrefix(type) {
   const prefixes = {
     support: "support",
-    mc_collab: "mc-collab",
+    matcherino: "matcherino",
     report: "report",
     staff_application: "staff-app",
     other: "other",
@@ -311,23 +311,8 @@ client.on(
           "send_modal:"
         )
       ) {
-        if (
-          !interaction.memberPermissions?.has(
-            PermissionFlagsBits.Administrator
-          )
-        ) {
-          return interaction.reply({
-            content:
-              "❌ Only administrators can use this.",
-            flags:
-              MessageFlags.Ephemeral,
-          });
-        }
-
         const channelId =
-          interaction.customId.split(
-            ":"
-          )[1];
+          interaction.customId.split(":")[1];
 
         const channel =
           interaction.guild.channels.cache.get(
@@ -374,6 +359,7 @@ client.on(
         if (image.trim()) {
           try {
             new URL(image);
+
             embed.setImage(
               image.trim()
             );
@@ -408,19 +394,6 @@ client.on(
         interaction.commandName ===
           "ticketpanel"
       ) {
-        if (
-          !interaction.memberPermissions?.has(
-            PermissionFlagsBits.Administrator
-          )
-        ) {
-          return interaction.reply({
-            content:
-              "❌ Only administrators can create the ticket panel.",
-            flags:
-              MessageFlags.Ephemeral,
-          });
-        }
-
         const embed =
           new EmbedBuilder()
             .setTitle(
@@ -458,11 +431,11 @@ client.on(
               },
               {
                 label:
-                  "MC Collab",
+                  "Matcherino Collab",
                 description:
-                  "Contact TTC about an MC collaboration",
+                  "Contact TTC about a Matcherino collaboration",
                 value:
-                  "mc_collab",
+                  "matcherino",
                 emoji:
                   "🤝",
               },
@@ -535,7 +508,6 @@ client.on(
         const typeLabel =
           getTicketTypeLabel(type);
 
-        // Existing ticket check
         const existingTicket =
           interaction.guild.channels.cache.find(
             channel =>
@@ -553,7 +525,6 @@ client.on(
           });
         }
 
-        // Fetch category directly from Discord
         let category;
 
         try {
@@ -569,24 +540,18 @@ client.on(
 
           return interaction.editReply({
             content:
-              "❌ I could not find the ticket category. Check the category ID and bot permissions.",
-          });
-        }
-
-        if (!category) {
-          return interaction.editReply({
-            content:
               "❌ I could not find the ticket category.",
           });
         }
 
         if (
+          !category ||
           category.type !==
-          ChannelType.GuildCategory
+            ChannelType.GuildCategory
         ) {
           return interaction.editReply({
             content:
-              `❌ The ID \`${TICKET_CATEGORY_ID}\` exists, but it is not a Discord category.`,
+              "❌ Ticket category is invalid.",
           });
         }
 
@@ -705,7 +670,7 @@ client.on(
                 "TTC Ticket System",
             });
 
-        const claimButton =
+        const ticketButtons =
           new ActionRowBuilder()
             .addComponents(
               new ButtonBuilder()
@@ -718,6 +683,18 @@ client.on(
                 .setEmoji("🙋")
                 .setStyle(
                   ButtonStyle.Primary
+                ),
+
+              new ButtonBuilder()
+                .setCustomId(
+                  "ticket_close"
+                )
+                .setLabel(
+                  "Close Ticket"
+                )
+                .setEmoji("🔒")
+                .setStyle(
+                  ButtonStyle.Danger
                 )
             );
 
@@ -728,7 +705,7 @@ client.on(
             ticketEmbed,
           ],
           components: [
-            claimButton,
+            ticketButtons,
           ],
         });
 
@@ -799,32 +776,72 @@ client.on(
           newTopic
         );
 
-        const disabledButton =
-          new ActionRowBuilder()
-            .addComponents(
-              new ButtonBuilder()
-                .setCustomId(
-                  "ticket_claimed"
-                )
-                .setLabel(
-                  `Claimed by ${interaction.user.username}`
-                )
-                .setStyle(
-                  ButtonStyle.Secondary
-                )
-                .setDisabled(true)
-            );
-
-        await interaction.update({
-          components: [
-            disabledButton,
-          ],
-        });
-
-        await channel.send({
+        await interaction.reply({
           content:
             `🙋 ${interaction.user} has claimed this ticket.`,
         });
+
+        return;
+      }
+
+      // ==================================================
+      // CLOSE TICKET BUTTON
+      // ==================================================
+
+      if (
+        interaction.isButton() &&
+        interaction.customId ===
+          "ticket_close"
+      ) {
+        if (
+          !isStaff(
+            interaction.member
+          )
+        ) {
+          return interaction.reply({
+            content:
+              "❌ Only TTC staff can close tickets.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
+
+        const channel =
+          interaction.channel;
+
+        if (
+          !channel.topic?.includes(
+            "ticketOwner:"
+          )
+        ) {
+          return interaction.reply({
+            content:
+              "❌ This is not a TTC ticket channel.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
+
+        await interaction.reply({
+          content:
+            "🔒 Ticket closing in **5 seconds**...",
+        });
+
+        setTimeout(
+          async () => {
+            try {
+              await channel.delete(
+                `Ticket closed by ${interaction.user.tag}`
+              );
+            } catch (error) {
+              console.error(
+                "❌ Failed to delete ticket:",
+                error
+              );
+            }
+          },
+          5000
+        );
 
         return;
       }

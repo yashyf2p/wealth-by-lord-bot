@@ -38,7 +38,7 @@ const STAFF_ROLE_NAMES = [
 ];
 
 // ======================================================
-// CHECK TOKEN
+// TOKEN CHECK
 // ======================================================
 
 if (!token) {
@@ -132,7 +132,6 @@ function getTicketPrefix(type) {
 // ======================================================
 
 const commands = [
-  // /send
   new SlashCommandBuilder()
     .setName("send")
     .setDescription("Send a TTC embed message")
@@ -147,7 +146,6 @@ const commands = [
       PermissionFlagsBits.Administrator
     ),
 
-  // /ticketpanel
   new SlashCommandBuilder()
     .setName("ticketpanel")
     .setDescription("Post the TTC ticket selection panel")
@@ -155,11 +153,9 @@ const commands = [
       PermissionFlagsBits.Administrator
     ),
 
-  // /closeticket
   new SlashCommandBuilder()
     .setName("closeticket")
     .setDescription("Close the current TTC ticket"),
-
 ].map(command => command.toJSON());
 
 // ======================================================
@@ -520,7 +516,7 @@ client.on(
       }
 
       // ==================================================
-      // TICKET SELECT MENU
+      // TICKET SELECT
       // ==================================================
 
       if (
@@ -539,7 +535,7 @@ client.on(
         const typeLabel =
           getTicketTypeLabel(type);
 
-        // Check whether member already has ticket
+        // Existing ticket check
         const existingTicket =
           interaction.guild.channels.cache.find(
             channel =>
@@ -557,24 +553,44 @@ client.on(
           });
         }
 
-        // Check category
-        const category =
-          interaction.guild.channels.cache.get(
-            TICKET_CATEGORY_ID
+        // IMPORTANT FIX:
+        // Fetch category directly from Discord
+        let category;
+
+        try {
+          category =
+            await interaction.guild.channels.fetch(
+              TICKET_CATEGORY_ID
+            );
+        } catch (error) {
+          console.error(
+            "❌ Failed to fetch ticket category:",
+            error
           );
 
-        if (
-          !category ||
-          category.type !==
-            ChannelType.GuildCategory
-        ) {
           return interaction.editReply({
             content:
-              "❌ Ticket category is invalid. Please contact a TTC administrator.",
+              "❌ I could not find the ticket category. Check the category ID and bot permissions.",
           });
         }
 
-        // Get staff roles
+        if (!category) {
+          return interaction.editReply({
+            content:
+              "❌ I could not find the ticket category.",
+          });
+        }
+
+        if (
+          category.type !==
+          ChannelType.GuildCategory
+        ) {
+          return interaction.editReply({
+            content:
+              `❌ The ID \`${TICKET_CATEGORY_ID}\` exists, but it is not a Discord category.`,
+          });
+        }
+
         const staffRoles =
           interaction.guild.roles.cache.filter(
             role =>
@@ -664,7 +680,7 @@ client.on(
               ChannelType.GuildText,
 
             parent:
-              TICKET_CATEGORY_ID,
+              category.id,
 
             topic:
               `ticketOwner:${interaction.user.id}|type:${type}|claimedBy:none`,
@@ -724,7 +740,7 @@ client.on(
       }
 
       // ==================================================
-      // CLAIM BUTTON
+      // CLAIM TICKET
       // ==================================================
 
       if (

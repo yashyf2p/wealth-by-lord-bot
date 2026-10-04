@@ -29,7 +29,7 @@ const token = process.env.DISCORD_TOKEN;
 // SETTINGS
 // ======================================================
 
-const TICKET_CATEGORY_ID = "1555971064146952313";
+const TICKET_CATEGORY_ID = "1556302247506223144";
 
 const STAFF_ROLE_NAMES = [
   "Founder",
@@ -553,7 +553,6 @@ client.on(
           });
         }
 
-        // IMPORTANT FIX:
         // Fetch category directly from Discord
         let category;
 

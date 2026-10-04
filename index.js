@@ -29,7 +29,7 @@ const token = process.env.DISCORD_TOKEN;
 // SETTINGS
 // ======================================================
 
-const TICKET_CATEGORY_ID = "1555971102751326328";
+const TICKET_CATEGORY_ID = "1555971064146952313";
 
 const STAFF_ROLE_NAMES = [
   "Founder",
@@ -38,7 +38,7 @@ const STAFF_ROLE_NAMES = [
 ];
 
 // ======================================================
-// ENVIRONMENT
+// CHECK TOKEN
 // ======================================================
 
 if (!token) {
@@ -61,9 +61,7 @@ http
     res.end("TTC Bot is online!");
   })
   .listen(PORT, () => {
-    console.log(
-      `🌐 Web server running on port ${PORT}`
-    );
+    console.log(`🌐 Web server running on port ${PORT}`);
   });
 
 // ======================================================
@@ -101,7 +99,8 @@ function cleanChannelName(text) {
     .toLowerCase()
     .replace(/[^a-z0-9-_]/g, "-")
     .replace(/-+/g, "-")
-    .slice(0, 80);
+    .replace(/^-|-$/g, "")
+    .slice(0, 70);
 }
 
 function getTicketTypeLabel(type) {
@@ -110,10 +109,22 @@ function getTicketTypeLabel(type) {
     mc_collab: "MC Collab",
     report: "Report a Player",
     staff_application: "Staff Application",
-    other: "Other / General Inquiry",
+    other: "Other",
   };
 
   return types[type] || "Ticket";
+}
+
+function getTicketPrefix(type) {
+  const prefixes = {
+    support: "support",
+    mc_collab: "mc-collab",
+    report: "report",
+    staff_application: "staff-app",
+    other: "other",
+  };
+
+  return prefixes[type] || "ticket";
 }
 
 // ======================================================
@@ -121,7 +132,6 @@ function getTicketTypeLabel(type) {
 // ======================================================
 
 const commands = [
-
   // /send
   new SlashCommandBuilder()
     .setName("send")
@@ -129,12 +139,8 @@ const commands = [
     .addChannelOption(option =>
       option
         .setName("channel")
-        .setDescription(
-          "Choose where the message should be sent"
-        )
-        .addChannelTypes(
-          ChannelType.GuildText
-        )
+        .setDescription("Choose where the message should be sent")
+        .addChannelTypes(ChannelType.GuildText)
         .setRequired(true)
     )
     .setDefaultMemberPermissions(
@@ -144,9 +150,7 @@ const commands = [
   // /ticketpanel
   new SlashCommandBuilder()
     .setName("ticketpanel")
-    .setDescription(
-      "Post the TTC ticket selection panel"
-    )
+    .setDescription("Post the TTC ticket selection panel")
     .setDefaultMemberPermissions(
       PermissionFlagsBits.Administrator
     ),
@@ -154,9 +158,7 @@ const commands = [
   // /closeticket
   new SlashCommandBuilder()
     .setName("closeticket")
-    .setDescription(
-      "Close the current ticket"
-    ),
+    .setDescription("Close the current TTC ticket"),
 
 ].map(command => command.toJSON());
 
@@ -167,7 +169,6 @@ const commands = [
 client.once(
   Events.ClientReady,
   async readyClient => {
-
     console.log(
       `✅ Logged in as ${readyClient.user.tag}`
     );
@@ -177,7 +178,6 @@ client.once(
     }).setToken(token);
 
     try {
-
       await rest.put(
         Routes.applicationCommands(
           readyClient.user.id
@@ -190,9 +190,7 @@ client.once(
       console.log(
         "✅ TTC slash commands registered"
       );
-
     } catch (error) {
-
       console.error(
         "❌ Failed to register commands:",
         error
@@ -208,7 +206,6 @@ client.once(
 client.on(
   Events.InteractionCreate,
   async interaction => {
-
     try {
 
       // ==================================================
@@ -219,13 +216,11 @@ client.on(
         interaction.isChatInputCommand() &&
         interaction.commandName === "send"
       ) {
-
         if (
           !interaction.memberPermissions?.has(
             PermissionFlagsBits.Administrator
           )
         ) {
-
           return interaction.reply({
             content:
               "❌ Only administrators can use `/send`.",
@@ -296,19 +291,13 @@ client.on(
 
         modal.addComponents(
           new ActionRowBuilder()
-            .addComponents(
-              titleInput
-            ),
+            .addComponents(titleInput),
 
           new ActionRowBuilder()
-            .addComponents(
-              messageInput
-            ),
+            .addComponents(messageInput),
 
           new ActionRowBuilder()
-            .addComponents(
-              imageInput
-            )
+            .addComponents(imageInput)
         );
 
         return interaction.showModal(
@@ -326,6 +315,18 @@ client.on(
           "send_modal:"
         )
       ) {
+        if (
+          !interaction.memberPermissions?.has(
+            PermissionFlagsBits.Administrator
+          )
+        ) {
+          return interaction.reply({
+            content:
+              "❌ Only administrators can use this.",
+            flags:
+              MessageFlags.Ephemeral,
+          });
+        }
 
         const channelId =
           interaction.customId.split(
@@ -341,7 +342,6 @@ client.on(
           !channel ||
           !channel.isTextBased()
         ) {
-
           return interaction.reply({
             content:
               "❌ I couldn't find that channel.",
@@ -351,22 +351,19 @@ client.on(
         }
 
         const title =
-          interaction.fields
-            .getTextInputValue(
-              "send_title"
-            );
+          interaction.fields.getTextInputValue(
+            "send_title"
+          );
 
         const message =
-          interaction.fields
-            .getTextInputValue(
-              "send_message"
-            );
+          interaction.fields.getTextInputValue(
+            "send_message"
+          );
 
         const image =
-          interaction.fields
-            .getTextInputValue(
-              "send_image"
-            );
+          interaction.fields.getTextInputValue(
+            "send_image"
+          );
 
         const embed =
           new EmbedBuilder()
@@ -379,17 +376,12 @@ client.on(
             .setTimestamp();
 
         if (image.trim()) {
-
           try {
-
             new URL(image);
-
             embed.setImage(
               image.trim()
             );
-
           } catch {
-
             return interaction.reply({
               content:
                 "❌ The image URL isn't valid.",
@@ -420,13 +412,11 @@ client.on(
         interaction.commandName ===
           "ticketpanel"
       ) {
-
         if (
           !interaction.memberPermissions?.has(
             PermissionFlagsBits.Administrator
           )
         ) {
-
           return interaction.reply({
             content:
               "❌ Only administrators can create the ticket panel.",
@@ -441,14 +431,14 @@ client.on(
               "🎫 TTC TICKETS"
             )
             .setDescription(
-              "Need help or want to contact the TTC team?\n\n" +
-              "Select the type of ticket you want to open below.\n\n" +
-              "Please only create a ticket when necessary."
+              "Need to contact the TTC team?\n\n" +
+              "Choose the ticket type that best matches what you need below.\n\n" +
+              "Please do not create unnecessary tickets."
             )
             .setColor(0x38bdf8)
             .setFooter({
               text:
-                "TTC Support System",
+                "TTC Ticket System",
             });
 
         const menu =
@@ -467,7 +457,8 @@ client.on(
                   "Get help from TTC staff",
                 value:
                   "support",
-                emoji: "🛠️",
+                emoji:
+                  "🛠️",
               },
               {
                 label:
@@ -476,7 +467,8 @@ client.on(
                   "Contact TTC about an MC collaboration",
                 value:
                   "mc_collab",
-                emoji: "🤝",
+                emoji:
+                  "🤝",
               },
               {
                 label:
@@ -485,25 +477,28 @@ client.on(
                   "Report a player or member",
                 value:
                   "report",
-                emoji: "🚨",
+                emoji:
+                  "🚨",
               },
               {
                 label:
                   "Staff Application",
                 description:
-                  "Apply to join TTC staff",
+                  "Apply to join the TTC staff team",
                 value:
                   "staff_application",
-                emoji: "📝",
+                emoji:
+                  "📝",
               },
               {
                 label:
                   "Other / General Inquiry",
                 description:
-                  "Anything that doesn't fit the other categories",
+                  "Anything that does not fit another category",
                 value:
                   "other",
-                emoji: "❓",
+                emoji:
+                  "❓",
               }
             );
 
@@ -525,7 +520,7 @@ client.on(
       }
 
       // ==================================================
-      // TICKET SELECTION
+      // TICKET SELECT MENU
       // ==================================================
 
       if (
@@ -533,6 +528,10 @@ client.on(
         interaction.customId ===
           "ticket_select"
       ) {
+        await interaction.deferReply({
+          flags:
+            MessageFlags.Ephemeral,
+        });
 
         const type =
           interaction.values[0];
@@ -540,7 +539,7 @@ client.on(
         const typeLabel =
           getTicketTypeLabel(type);
 
-        // Check for existing ticket
+        // Check whether member already has ticket
         const existingTicket =
           interaction.guild.channels.cache.find(
             channel =>
@@ -552,30 +551,30 @@ client.on(
           );
 
         if (existingTicket) {
-
-          return interaction.reply({
+          return interaction.editReply({
             content:
               `❌ You already have an open ticket: ${existingTicket}`,
-            flags:
-              MessageFlags.Ephemeral,
           });
         }
 
+        // Check category
         const category =
           interaction.guild.channels.cache.get(
             TICKET_CATEGORY_ID
           );
 
-        if (!category) {
-
-          return interaction.reply({
+        if (
+          !category ||
+          category.type !==
+            ChannelType.GuildCategory
+        ) {
+          return interaction.editReply({
             content:
-              "❌ I couldn't find the TTC ticket category.",
-            flags:
-              MessageFlags.Ephemeral,
+              "❌ Ticket category is invalid. Please contact a TTC administrator.",
           });
         }
 
+        // Get staff roles
         const staffRoles =
           interaction.guild.roles.cache.filter(
             role =>
@@ -584,7 +583,7 @@ client.on(
               )
           );
 
-        const overwrites = [
+        const permissionOverwrites = [
           {
             id:
               interaction.guild.roles.everyone.id,
@@ -605,6 +604,8 @@ client.on(
                 .ReadMessageHistory,
               PermissionsBitField.Flags
                 .AttachFiles,
+              PermissionsBitField.Flags
+                .EmbedLinks,
             ],
           },
           {
@@ -616,9 +617,11 @@ client.on(
               PermissionsBitField.Flags
                 .SendMessages,
               PermissionsBitField.Flags
+                .ReadMessageHistory,
+              PermissionsBitField.Flags
                 .ManageChannels,
               PermissionsBitField.Flags
-                .ReadMessageHistory,
+                .EmbedLinks,
             ],
           },
         ];
@@ -627,8 +630,7 @@ client.on(
           const role of
           staffRoles.values()
         ) {
-
-          overwrites.push({
+          permissionOverwrites.push({
             id: role.id,
             allow: [
               PermissionsBitField.Flags
@@ -639,6 +641,8 @@ client.on(
                 .ReadMessageHistory,
               PermissionsBitField.Flags
                 .AttachFiles,
+              PermissionsBitField.Flags
+                .EmbedLinks,
             ],
           });
         }
@@ -646,32 +650,28 @@ client.on(
         const username =
           cleanChannelName(
             interaction.user.username
-          );
+          ) || "member";
 
         const prefix =
-          cleanChannelName(
-            typeLabel
-          );
+          getTicketPrefix(type);
 
         const ticketChannel =
-          await interaction.guild.channels.create(
-            {
-              name:
-                `${prefix}-${username}`,
+          await interaction.guild.channels.create({
+            name:
+              `${prefix}-${username}`,
 
-              type:
-                ChannelType.GuildText,
+            type:
+              ChannelType.GuildText,
 
-              parent:
-                TICKET_CATEGORY_ID,
+            parent:
+              TICKET_CATEGORY_ID,
 
-              topic:
-                `ticketOwner:${interaction.user.id}|type:${type}|claimedBy:none`,
+            topic:
+              `ticketOwner:${interaction.user.id}|type:${type}|claimedBy:none`,
 
-              permissionOverwrites:
-                overwrites,
-            }
-          );
+            permissionOverwrites:
+              permissionOverwrites,
+          });
 
         const ticketEmbed =
           new EmbedBuilder()
@@ -680,8 +680,8 @@ client.on(
             )
             .setDescription(
               `Welcome ${interaction.user}!\n\n` +
-              `A member of the **TTC Staff Team** will help you here.\n\n` +
-              `Please explain what you need as clearly as possible.\n\n` +
+              `A member of the **TTC Staff Team** will assist you here.\n\n` +
+              `Please explain your request clearly and provide any important information.\n\n` +
               `**Ticket Type:** ${typeLabel}`
             )
             .setColor(0x38bdf8)
@@ -690,7 +690,7 @@ client.on(
                 "TTC Ticket System",
             });
 
-        const buttons =
+        const claimButton =
           new ActionRowBuilder()
             .addComponents(
               new ButtonBuilder()
@@ -713,20 +713,18 @@ client.on(
             ticketEmbed,
           ],
           components: [
-            buttons,
+            claimButton,
           ],
         });
 
-        return interaction.reply({
+        return interaction.editReply({
           content:
             `✅ Your ticket has been created: ${ticketChannel}`,
-          flags:
-            MessageFlags.Ephemeral,
         });
       }
 
       // ==================================================
-      // CLAIM TICKET BUTTON
+      // CLAIM BUTTON
       // ==================================================
 
       if (
@@ -734,13 +732,11 @@ client.on(
         interaction.customId ===
           "ticket_claim"
       ) {
-
         if (
           !isStaff(
             interaction.member
           )
         ) {
-
           return interaction.reply({
             content:
               "❌ Only TTC staff can claim tickets.",
@@ -757,10 +753,9 @@ client.on(
             "ticketOwner:"
           )
         ) {
-
           return interaction.reply({
             content:
-              "❌ This isn't a TTC ticket channel.",
+              "❌ This is not a TTC ticket channel.",
             flags:
               MessageFlags.Ephemeral,
           });
@@ -771,7 +766,6 @@ client.on(
             "claimedBy:none"
           )
         ) {
-
           return interaction.reply({
             content:
               "❌ This ticket has already been claimed.",
@@ -829,13 +823,11 @@ client.on(
         interaction.commandName ===
           "closeticket"
       ) {
-
         if (
           !isStaff(
             interaction.member
           )
         ) {
-
           return interaction.reply({
             content:
               "❌ Only TTC staff can close tickets.",
@@ -852,10 +844,9 @@ client.on(
             "ticketOwner:"
           )
         ) {
-
           return interaction.reply({
             content:
-              "❌ This command can only be used inside a ticket.",
+              "❌ `/closeticket` can only be used inside a TTC ticket.",
             flags:
               MessageFlags.Ephemeral,
           });
@@ -868,21 +859,16 @@ client.on(
 
         setTimeout(
           async () => {
-
             try {
-
               await channel.delete(
                 `Ticket closed by ${interaction.user.tag}`
               );
-
             } catch (error) {
-
               console.error(
                 "❌ Failed to delete ticket:",
                 error
               );
             }
-
           },
           5000
         );
@@ -891,7 +877,6 @@ client.on(
       }
 
     } catch (error) {
-
       console.error(
         "❌ Interaction error:",
         error
@@ -901,7 +886,6 @@ client.on(
         interaction.replied ||
         interaction.deferred
       ) {
-
         return interaction
           .followUp({
             content:
